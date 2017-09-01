@@ -90,8 +90,8 @@ void rescueMode();
 #define RESCUE 1
 
 //Configs
-#define OUTPUT_DEBUG 0
-#define MOVE_ENGINES 0
+#define OUTPUT_DEBUG 1
+#define MOVE_ENGINES 1
 
 PID mosca(0, 0, 0); //start PID object
 L293D engR(44, 33, 31); //engineR object
