@@ -89,6 +89,9 @@ void followerMode();
 void rescueMode();
 void clockManager();
 void setClock(int);
+void stopEngines();
+void move();
+void turn();
 
 //Macros
 #define FOLLOWER 0
@@ -103,7 +106,7 @@ PID mosca(.5, 0, 0); //start PID object
 L293D engR(44, 31, 33); //engineR object
 L293D engL(45, 34, 32); //engineL object
 Ultrasonic uLeft(39,38); // (Trig PIN,Echo PIN)
-Ultrasonic uRight(41,40); // (Trig PIN,Echo PIN)
+Ultrasonic uRight(52,53); // (Trig PIN,Echo PIN)
 Ultrasonic uFrontUp(43,42); // (Trig PIN,Echo PIN)
 Ultrasonic uFrontCenter(51,50); // (Trig PIN,Echo PIN)
 Ultrasonic uFrontBottom(49,48); // (Trig PIN,Echo PIN)
@@ -269,4 +272,59 @@ void moveEngines()
 		engL.set(speedL);
 		engR.set(speedR);
 	#endif
+}
+
+//Feed foreward
+void turn(int isRight, unsigned int time)
+{
+	int l = TARGET_SPEED;
+	int r = TARGET_SPEED;
+	unsigned int initTime;
+
+	//Go right
+	if (isRight)
+	{
+		r = -r;
+	} //Go left
+	else
+	{
+		l = -l;
+	}
+
+	initTime = millis();
+	while (initTime < millis() - time)
+	{
+		engL.set(TARGET_SPEED);
+		engR.set(-TARGET_SPEED);
+	}
+	stopEngines();
+}
+
+void move(int isForeward, unsigned int time)
+{
+	int l = TARGET_SPEED;
+	int r = TARGET_SPEED;
+	unsigned int initTime;
+
+	//Go backwards
+	if (isForeward)
+	{
+		r = -r;
+		l = -l;
+	}
+
+	initTime = millis();
+
+	while (initTime < millis() - time)
+	{
+		engL.set(TARGET_SPEED);
+		engR.set(TARGET_SPEED);
+	}
+	stopEngines();
+}
+
+void stopEngines()
+{
+	engL.set(0);
+	engR.set(0);
 }
