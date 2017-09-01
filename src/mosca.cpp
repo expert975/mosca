@@ -82,7 +82,7 @@ void readSensors();
 void calcEnginePID();
 void printSensors();
 
-#define OUTPUT_DEBUG 1
+#define OUTPUT_DEBUG 0
 #define MOVE_ENGINES 0
 
 PID mosca(0, 0, 0); //start PID object
@@ -108,6 +108,7 @@ byte speedL = 0; //right engine speed
 byte speedR = 0; //left engine speed
 
 byte targetSpeed = 100; //how fast we should go
+byte followingLine = 1;
 byte controlOutput; //correction value
 
 char debugBuffer[200];
@@ -129,28 +130,37 @@ void setup()
 void loop ()
 {
 	readSensors();
-	// calcEnginePID();
+	calcEnginePID();
 	printSensors();
 
-	// moveEngines();
+	moveEngines();
 	delay(100);
+}
+
+void calcEnginePID()
+{
+	mosca.calculate(float(sensorInR - sensorInL));
+	controlOutput = mosca.controlOutput;
 	speedL = constrain(targetSpeed + controlOutput, 0, 255);
 	speedR = constrain(targetSpeed - controlOutput, 0, 255);
 }
 
 void readSensors()
 {
-	sensorOutR = analogRead(sensorOutRPin);
-	sensorInR = analogRead(sensorInRPin);
-	sensorCenter = analogRead(sensorCenterPin);
-	sensorInL = analogRead(sensorInLPin);
-	sensorOutL = analogRead(sensorOutLPin);
-	frontSensor = analogRead(frontSensorPin);
+	if (followingLine)
+	{
+		sensorOutR = analogRead(sensorOutRPin);
+		sensorInR = analogRead(sensorInRPin);
+		sensorCenter = analogRead(sensorCenterPin);
+		sensorInL = analogRead(sensorInLPin);
+		sensorOutL = analogRead(sensorOutLPin);
+		frontSensor = analogRead(frontSensorPin);
+	}
 }
 
 void printSensors()
 {
-	#ifdef OUTPUT_DEBUG
+	#if OUTPUT_DEBUG
 		debugBuffer[0] = '\0';
 		sprintf(debugBuffer, "F: %04d, OR: %04d, IR: %04d, C: %04d, IL: %04d, OL: %04d", frontSensor, sensorOutR,  sensorInR, sensorCenter, sensorInL, sensorOutL);
 		Serial.println(debugBuffer);
@@ -159,7 +169,7 @@ void printSensors()
 
 void moveEngines()
 {
-	#ifdef MOVE_ENGINES
+	#if MOVE_ENGINES
 		engL.set(speedL);
 		engR.set(speedR);
 	#endif
