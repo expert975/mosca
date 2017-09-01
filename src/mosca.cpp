@@ -81,7 +81,15 @@ void moveEngines();
 void readSensors();
 void calcEnginePID();
 void printSensors();
+void modeManager();
+void followerMode();
+void rescueMode();
 
+//Macros
+#define FOLLOWER 0
+#define RESCUE 1
+
+//Configs
 #define OUTPUT_DEBUG 0
 #define MOVE_ENGINES 0
 
@@ -108,8 +116,16 @@ byte speedL = 0; //right engine speed
 byte speedR = 0; //left engine speed
 
 byte targetSpeed = 100; //how fast we should go
-byte followingLine = 1;
+byte modusOperandi = 1; //defines how the system should behave (i.e. current mode)
 byte controlOutput; //correction value
+
+//Clock variables
+boolean clockEnabled; //enables the clock
+unsigned int definedClockTime; //how long should each clock cycle take
+unsigned int lastClockCycleTime; //stores the last clock cycle time
+unsigned int clockCycleStartTime; //stores when last clock cycle started
+boolean longExecutionTime; //holds true when loop takes longer than definedClockTime
+
 
 char debugBuffer[200];
 
@@ -129,12 +145,70 @@ void setup()
 
 void loop ()
 {
+	modeManager();
+
+	delay(100);
+}
+
+//Allows modes to operate in fixed clock
+void clockManager()
+{
+        //This next function should always be the last one in the loop sequence
+        if (clockEnabled) //if current mode uses clock
+        {
+                lastClockCycleTime = millis() - clockCycleStartTime; //processing time used in the main loop
+                if (lastClockCycleTime > definedClockTime) //if loop used processing time is greater than the defined clock time
+                {
+									longExecutionTime = true; //report long execution
+                }
+                else //if lastClockCycleTime was faster than definedClockTime...
+                {
+                        delay(definedClockTime - lastClockCycleTime); //...we still got some time to waste
+                }
+        }
+}
+
+//Sets clock time
+void setClock(int clockTime)
+{
+        if (clockTime == 0)
+        {
+                clockEnabled = false;
+                definedClockTime = 0;
+        }
+        else
+        {
+                clockEnabled = true;
+                definedClockTime = clockTime;
+        }
+}
+
+void modeManager ()
+{
+	switch (modusOperandi)
+	{
+		case FOLLOWER:
+			followerMode();
+			break;
+		case RESCUE:
+			rescueMode();
+			break;
+	}
+
+	if (OUTPUT_DEBUG)
+		printSensors();
+}
+
+void followerMode()
+{
 	readSensors();
 	calcEnginePID();
-	printSensors();
-
 	moveEngines();
-	delay(100);
+}
+
+void rescueMode()
+{
+
 }
 
 void calcEnginePID()
@@ -147,15 +221,12 @@ void calcEnginePID()
 
 void readSensors()
 {
-	if (followingLine)
-	{
 		sensorOutR = analogRead(sensorOutRPin);
 		sensorInR = analogRead(sensorInRPin);
 		sensorCenter = analogRead(sensorCenterPin);
 		sensorInL = analogRead(sensorInLPin);
 		sensorOutL = analogRead(sensorOutLPin);
 		frontSensor = analogRead(frontSensorPin);
-	}
 }
 
 void printSensors()
