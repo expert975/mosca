@@ -84,6 +84,8 @@ void printSensors();
 void modeManager();
 void followerMode();
 void rescueMode();
+void clockManager();
+void setClock(int);
 
 //Macros
 #define FOLLOWER 0
@@ -116,7 +118,7 @@ byte speedL = 0; //right engine speed
 byte speedR = 0; //left engine speed
 
 byte targetSpeed = 100; //how fast we should go
-byte modusOperandi = 1; //defines how the system should behave (i.e. current mode)
+byte modusOperandi; //defines how the system should behave (i.e. current mode)
 byte controlOutput; //correction value
 
 //Clock variables
@@ -141,13 +143,20 @@ void setup()
   mosca.setpoint = 0;
 
 	Serial.begin(115200);
+
+	modusOperandi = FOLLOWER; //defines how the system should behave (i.e. current mode)
+	setClock(50);
+	clockEnabled = true;
+	definedClockTime = true;
+	lastClockCycleTime = 0;
+	clockCycleStartTime = 0;
+	longExecutionTime = false;
 }
 
 void loop ()
 {
 	modeManager();
-
-	delay(100);
+	clockManager();
 }
 
 //Allows modes to operate in fixed clock
