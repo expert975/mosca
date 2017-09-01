@@ -6,6 +6,7 @@
 
 #include <Arduino.h>
 #include <L293D.h>
+#include <Ultrasonic.h>
 
 class PID
 {
@@ -101,6 +102,12 @@ void setClock(int);
 PID mosca(.5, 0, 0); //start PID object
 L293D engR(44, 31, 33); //engineR object
 L293D engL(45, 34, 32); //engineL object
+Ultrasonic uLeft(39,38); // (Trig PIN,Echo PIN)
+Ultrasonic uRight(41,40); // (Trig PIN,Echo PIN)
+Ultrasonic uFrontUp(43,42); // (Trig PIN,Echo PIN)
+Ultrasonic uFrontCenter(51,50); // (Trig PIN,Echo PIN)
+Ultrasonic uFrontBottom(49,48); // (Trig PIN,Echo PIN)
+
 
 //Sensor input
 byte frontSensorPin = A10;
