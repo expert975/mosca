@@ -93,7 +93,7 @@ void setClock(int);
 
 //Configs
 #define OUTPUT_DEBUG 1
-#define MOVE_ENGINES 1
+#define ENABLE_ENGINES 1
 #define TARGET_SPEED 255 //how fast we should go
 
 PID mosca(1, 0, 0); //start PID object
@@ -253,7 +253,7 @@ void printSensors()
 
 void moveEngines()
 {
-	#if MOVE_ENGINES
+	#if ENABLE_ENGINES
 		engL.set(speedL);
 		engR.set(speedR);
 	#endif
