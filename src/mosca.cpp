@@ -48,8 +48,9 @@ public: // --rething data types
 
   void calculate(float _feedbackInput) //calculates correction
   {
-    feedbackInput = _feedbackInput;
-    error = setpoint - feedbackInput; //error in the contolled system
+		error = _feedbackInput;
+    //feedbackInput = _feedbackInput;
+    //error = setpoint - feedbackInput; //error in the contolled system
     time = millis();
     deltaTime = float(time - lastTime)/1000; //delta time in seconds
 
@@ -59,13 +60,14 @@ public: // --rething data types
 
     // if (I > outMax) I = outMax;
     // if (I < outMin) I = outMin;
-    I = constrain(I, outMin, outMax); //prevent reset windup, where I grows more
+    // I = constrain(I, outMin, outMax); //prevent reset windup, where I grows more
                                       //than the system can respond
     controlOutput = P + I + D;
+		Serial.println(controlOutput);
 
     // if (controlOutput > outMax) controlOutput = outMax;
     // if (controlOutput < outMin) controlOutput = outMin;
-    controlOutput = constrain(controlOutput, outMin, outMax); //restrict PID output to control output
+    // controlOutput = constrain(controlOutput, outMin, outMax); //restrict PID output to control output
 
     lastTime = time;
     lastFeedbackInput = feedbackInput;
@@ -94,10 +96,10 @@ void setClock(int);
 //Configs
 #define OUTPUT_DEBUG 1
 #define ENABLE_ENGINES 1
-#define TARGET_SPEED 255 //how fast we should go
+#define TARGET_SPEED 200 //how fast we should go
 
-PID mosca(1, 0, 0); //start PID object
-L293D engR(44, 33, 31); //engineR object
+PID mosca(.5, 0, 0); //start PID object
+L293D engR(44, 31, 33); //engineR object
 L293D engL(45, 34, 32); //engineL object
 
 //Sensor input
@@ -119,7 +121,7 @@ byte speedL = 0; //right engine speed
 byte speedR = 0; //left engine speed
 
 byte modusOperandi; //defines how the system should behave (i.e. current mode)
-byte controlOutput; //correction value
+// byte controlOutput; //correction value
 float feedbackInput;
 
 //Clock variables
@@ -140,6 +142,9 @@ void setup()
   pinMode(sensorCenter, INPUT);
   pinMode(sensorInL, INPUT);
   pinMode(sensorOutL, INPUT);
+
+	mosca.outMin = -255;
+	mosca.outMax = 255;
 
   mosca.setpoint = 0;
 
@@ -227,9 +232,8 @@ void calcEnginePID()
 {
 	feedbackInput = sensorInR - sensorInL;
 	mosca.calculate(feedbackInput);
-	controlOutput = byte(mosca.controlOutput);
-	speedL = constrain(TARGET_SPEED + controlOutput, 0, 255);
-	speedR = constrain(TARGET_SPEED - controlOutput, 0, 255);
+	speedL = constrain(TARGET_SPEED + mosca.controlOutput, 0, 255);
+	speedR = constrain(TARGET_SPEED - mosca.controlOutput, 0, 255);
 }
 
 void readSensors()
@@ -246,7 +250,8 @@ void printSensors()
 {
 	#if OUTPUT_DEBUG
 		debugBuffer[0] = '\0';
-		sprintf(debugBuffer, "F: %04d, OR: %04d, IR: %04d, C: %04d, IL: %04d, OL: %04d, CLK: %d, FB: %u, OUT: %d", frontSensor, sensorOutR,  sensorInR, sensorCenter, sensorInL, sensorOutL, lastClockCycleTime, feedbackInput, controlOutput);
+		sprintf(debugBuffer, "F: %04d, OR: %04d, IR: %04d, C: %04d, IL: %04d, OL: %04d, CLK: %03d, FB: %03d, OUT: %03d, L: %03d, R: %03d", frontSensor, sensorOutR,  sensorInR, sensorCenter, sensorInL, sensorOutL, lastClockCycleTime, (int)feedbackInput, (int)mosca.controlOutput, speedL, speedR);
+
 		Serial.println(debugBuffer);
 	#endif
 }
