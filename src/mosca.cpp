@@ -94,8 +94,9 @@ void setClock(int);
 //Configs
 #define OUTPUT_DEBUG 1
 #define MOVE_ENGINES 1
+#define TARGET_SPEED 255 //how fast we should go
 
-PID mosca(0, 0, 0); //start PID object
+PID mosca(1, 0, 0); //start PID object
 L293D engR(44, 33, 31); //engineR object
 L293D engL(45, 34, 32); //engineL object
 
@@ -117,9 +118,9 @@ int frontSensor = 0;
 byte speedL = 0; //right engine speed
 byte speedR = 0; //left engine speed
 
-byte targetSpeed = 100; //how fast we should go
 byte modusOperandi; //defines how the system should behave (i.e. current mode)
 byte controlOutput; //correction value
+float feedbackInput;
 
 //Clock variables
 boolean clockEnabled; //enables the clock
@@ -155,6 +156,8 @@ void setup()
 
 void loop ()
 {
+	clockCycleStartTime = millis(); //clock cycle start
+
 	modeManager();
 	clockManager();
 }
@@ -222,10 +225,11 @@ void rescueMode()
 
 void calcEnginePID()
 {
-	mosca.calculate(float(sensorInR - sensorInL));
-	controlOutput = mosca.controlOutput;
-	speedL = constrain(targetSpeed + controlOutput, 0, 255);
-	speedR = constrain(targetSpeed - controlOutput, 0, 255);
+	feedbackInput = sensorInR - sensorInL;
+	mosca.calculate(feedbackInput);
+	controlOutput = byte(mosca.controlOutput);
+	speedL = constrain(TARGET_SPEED + controlOutput, 0, 255);
+	speedR = constrain(TARGET_SPEED - controlOutput, 0, 255);
 }
 
 void readSensors()
@@ -242,7 +246,7 @@ void printSensors()
 {
 	#if OUTPUT_DEBUG
 		debugBuffer[0] = '\0';
-		sprintf(debugBuffer, "F: %04d, OR: %04d, IR: %04d, C: %04d, IL: %04d, OL: %04d", frontSensor, sensorOutR,  sensorInR, sensorCenter, sensorInL, sensorOutL);
+		sprintf(debugBuffer, "F: %04d, OR: %04d, IR: %04d, C: %04d, IL: %04d, OL: %04d, CLK: %d, FB: %u, OUT: %d", frontSensor, sensorOutR,  sensorInR, sensorCenter, sensorInL, sensorOutL, lastClockCycleTime, feedbackInput, controlOutput);
 		Serial.println(debugBuffer);
 	#endif
 }
