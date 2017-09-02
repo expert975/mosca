@@ -7,6 +7,7 @@
 #include <Arduino.h>
 #include <L293D.h>
 #include <Ultrasonic.h>
+#include <Servo.h>
 
 class PID
 {
@@ -90,8 +91,20 @@ void rescueMode();
 void clockManager();
 void setClock(int);
 void stopEngines();
-void move();
-void turn();
+void move(int, unsigned int);
+void turn(int, int, unsigned int);
+void walkToBall();
+void summonTheClaw();
+void lowerClaw();
+void closeClaw();
+void liftClaw();
+void openClaw();
+void checkForBall();
+void considerRemainingTime();
+void lockClaw();
+void openBackdoor();
+void closeBackdoor();
+
 
 //Macros
 #define FOLLOWER 0
@@ -100,16 +113,20 @@ void turn();
 //Configs
 #define OUTPUT_DEBUG 1
 #define ENABLE_ENGINES 1
-#define TARGET_SPEED 200 //how fast we should go
+#define TARGET_SPEED 130 //how fast we should go
+#define BALL_RADIUS 2
 
 PID mosca(.5, 0, 0); //start PID object
 L293D engR(44, 31, 33); //engineR object
 L293D engL(45, 34, 32); //engineL object
 Ultrasonic uLeft(39,38); // (Trig PIN,Echo PIN)
 Ultrasonic uRight(52,53); // (Trig PIN,Echo PIN)
-Ultrasonic uFrontUp(43,42); // (Trig PIN,Echo PIN)
-Ultrasonic uFrontCenter(51,50); // (Trig PIN,Echo PIN)
-Ultrasonic uFrontBottom(49,48); // (Trig PIN,Echo PIN)
+Ultrasonic uUp(43,42); // (Trig PIN,Echo PIN)
+Ultrasonic uCenter(51,50); // (Trig PIN,Echo PIN)
+Ultrasonic uBottom(49,48); // (Trig PIN,Echo PIN)
+Servo frontServo;  //servoObjects
+Servo clawServo; //servoObjects
+Servo backServo; //servoObjects
 
 
 //Sensor input
@@ -119,6 +136,10 @@ byte sensorInRPin = A12;
 byte sensorCenterPin = A13;
 byte sensorInLPin = A14;
 byte sensorOutLPin = A15;
+
+byte button1 = A0;
+byte button2 = A1;
+byte button3 = A2;
 
 int sensorOutR = 0;
 int sensorInR = 0;
@@ -153,6 +174,14 @@ void setup()
   pinMode(sensorInL, INPUT);
   pinMode(sensorOutL, INPUT);
 
+	pinMode(button1, INPUT);
+	pinMode(button2, INPUT);
+	pinMode(button3, INPUT);
+
+	clawServo.attach(2);
+	frontServo.attach(3);
+	backServo.attach(4);
+
 	mosca.outMin = -255;
 	mosca.outMax = 255;
 
@@ -160,7 +189,7 @@ void setup()
 
 	Serial.begin(115200);
 
-	modusOperandi = FOLLOWER; //defines how the system should behave (i.e. current mode)
+	modusOperandi = RESCUE; //defines how the system should behave (i.e. current mode)
 	setClock(50);
 	clockEnabled = true;
 	definedClockTime = true;
@@ -172,8 +201,16 @@ void setup()
 void loop ()
 {
 	clockCycleStartTime = millis(); //clock cycle start
-
-	modeManager();
+	// lockClaw();
+	closeBackdoor();
+	delay(1000);
+	openBackdoor();
+	delay(1000);
+	openClaw();
+	delay(1000);
+	closeClaw();
+	delay(1000);
+	// modeManager();
 	clockManager();
 }
 
@@ -235,6 +272,8 @@ void followerMode()
 
 void rescueMode()
 {
+	// engL.set(255);
+	// engR.set(255);
 
 }
 
@@ -274,8 +313,110 @@ void moveEngines()
 	#endif
 }
 
+//Second arena
+void moveCenter()
+{
+	move(0, 1000);
+	turn(0, 255, 500);
+	move(0, 1000);
+}
+
+void scanBall()
+{
+	while(true)
+	{
+		turn(1, 255, 300);
+		delay(300);
+		checkForBall();
+	}
+}
+
+void checkForBall()
+{
+	int relativeDistance = abs(uCenter.Ranging(CM) - uBottom.Ranging(CM));//distance between ball and wall sensors
+	if (relativeDistance > BALL_RADIUS)
+	{
+		walkToBall();
+	}
+}
+
+void walkToBall()
+{
+	int distanceToBall = uBottom.Ranging(CM); //define initial distanceToBall
+
+	while (distanceToBall > 2) //while not near enough
+	{
+		distanceToBall = uBottom.Ranging(CM); //keep checking
+	}
+	stopEngines();
+	summonTheClaw();
+}
+
 //Feed foreward
-void turn(int isRight, unsigned int time)
+void summonTheClaw()
+{
+	lowerClaw();
+	delay(1000);
+	closeClaw();
+	delay(1000);
+	liftClaw();
+	delay(1000);
+	openClaw();
+	delay(1000);
+	considerRemainingTime();
+}
+
+void considerRemainingTime()
+{
+	//HOW?
+}
+
+void openClaw()
+{
+	for (int pos = 0; pos <= 60; pos += 1)
+	{ // goes from 0 degrees to +/-60 degrees
+		clawServo.write(pos);              // tell servo to go to position in variable 'pos'
+  	delay(15);                       // waits 15ms for the servo to reach the position
+	}
+}
+
+void closeClaw()
+{
+	clawServo.write(-60);        // goes from 60 degrees to 0 degrees
+	delay(15);  // tell servo to go to position in variable 'pos'
+}
+
+void lockClaw()
+{
+	frontServo.writeMicroseconds(1500);
+}
+
+void liftClaw()
+{
+	frontServo.writeMicroseconds(1200);
+	delay(11000);
+}
+
+void lowerClaw()
+{
+	frontServo.writeMicroseconds(1700);
+	delay(900);
+}
+void openBackdoor()
+{
+	for (int pos = 0; pos <= 60; pos += 1)
+	{ // goes from 0 degrees to +/-60 degrees
+		backServo.write(pos);              // tell servo to go to position in variable 'pos'
+		delay(15);                       // waits 15ms for the servo to reach the position
+	}
+}
+void closeBackdoor()
+{
+	backServo.write(-60);        // goes from 60 degrees to 0 degrees
+	delay(15);  // tell servo to go to position in variable 'pos'
+}
+
+void turn(int isRight, int speed, unsigned int time)
 {
 	int l = TARGET_SPEED;
 	int r = TARGET_SPEED;
@@ -292,8 +433,9 @@ void turn(int isRight, unsigned int time)
 	}
 
 	initTime = millis();
-	while (initTime < millis() - time)
+	while (millis() - initTime < time)
 	{
+		Serial.print( millis() - initTime < time);
 		engL.set(TARGET_SPEED);
 		engR.set(-TARGET_SPEED);
 	}
@@ -315,8 +457,10 @@ void move(int isForeward, unsigned int time)
 
 	initTime = millis();
 
-	while (initTime < millis() - time)
+	while (millis() - initTime < time)
 	{
+		Serial.print( millis() - initTime < time);
+
 		engL.set(TARGET_SPEED);
 		engR.set(TARGET_SPEED);
 	}
