@@ -104,7 +104,9 @@ void considerRemainingTime();
 void lockClaw();
 void openBackdoor();
 void closeBackdoor();
-
+void walkToTriangle();
+void checkForTriangle();
+void halt();
 
 //Macros
 #define FOLLOWER 0
@@ -113,8 +115,9 @@ void closeBackdoor();
 //Configs
 #define OUTPUT_DEBUG 1
 #define ENABLE_ENGINES 1
-#define TARGET_SPEED 130 //how fast we should go
+#define TARGET_SPEED 100 //how fast we should go
 #define BALL_RADIUS 2
+#define MAX_SCAN_COUNT 20 //how long it should look for balls before giving up
 
 PID mosca(.5, 0, 0); //start PID object
 L293D engR(44, 31, 33); //engineR object
@@ -151,6 +154,9 @@ int frontSensor = 0;
 byte speedL = 0; //right engine speed
 byte speedR = 0; //left engine speed
 
+int distance; //stores distances within functions, tmp variable
+int scanCounter = 0;
+int lostDirection = 0;
 byte modusOperandi; //defines how the system should behave (i.e. current mode)
 // byte controlOutput; //correction value
 float feedbackInput;
@@ -196,21 +202,15 @@ void setup()
 	lastClockCycleTime = 0;
 	clockCycleStartTime = 0;
 	longExecutionTime = false;
+  closeClaw();
 }
 
 void loop ()
 {
 	clockCycleStartTime = millis(); //clock cycle start
-	// lockClaw();
-	closeBackdoor();
-	delay(1000);
-	openBackdoor();
-	delay(1000);
-	openClaw();
-	delay(1000);
-	closeClaw();
-	delay(1000);
-	// modeManager();
+
+
+	modeManager();
 	clockManager();
 }
 
@@ -313,6 +313,19 @@ void moveEngines()
 	#endif
 }
 
+void checkObstacle()
+{
+  distance = uCenter.Ranging(CM);
+}
+
+void avoidObstacle()
+{
+  if (uCenter.Ranging(CM));
+  {
+
+  }
+}
+
 //Second arena
 void moveCenter()
 {
@@ -321,32 +334,73 @@ void moveCenter()
 	move(0, 1000);
 }
 
+void scanTriangle()
+{
+  turn(1, 255, 300);
+  delay(300);
+  checkForTriangle();
+}
+
+void checkForTriangle()
+{
+  distance = abs(uCenter.Ranging(CM) - uUp.Ranging(CM));//distance between ball and wall sensors
+  if (distance > 12)
+  {
+    walkToTriangle();
+  }
+}
+
+void walkToTriangle()
+{
+  distance = uCenter.Ranging(CM); //define initial distanceToTriangle
+
+  while (distance > 15) //while not near enough
+  {
+    distance = uBottom.Ranging(CM); //keep checking
+    engL.set(TARGET_SPEED);
+    engR.set(TARGET_SPEED);
+  }
+  stopEngines();
+  delay(500);
+  turn(0, 255, 500); //turn 180
+  delay(500);
+  move(1, 500); //move backwards
+  delay(500);
+  openBackdoor();
+  halt();
+}
+
 void scanBall()
 {
-	while(true)
+	while(scanCounter < MAX_SCAN_COUNT)
 	{
-		turn(1, 255, 300);
-		delay(300);
-		checkForBall();
+    turn(1, 255, 300);
+    delay(300);
+    checkForBall();
 	}
 }
 
 void checkForBall()
 {
-	int relativeDistance = abs(uCenter.Ranging(CM) - uBottom.Ranging(CM));//distance between ball and wall sensors
-	if (relativeDistance > BALL_RADIUS)
+	distance = abs(uCenter.Ranging(CM) - uBottom.Ranging(CM));//distance between ball and wall sensors
+	if (distance > BALL_RADIUS)
 	{
 		walkToBall();
+    scanCounter = 0;
 	}
+  else
+  {
+    scanCounter++;
+  }
 }
 
 void walkToBall()
 {
-	int distanceToBall = uBottom.Ranging(CM); //define initial distanceToBall
+	distance = uBottom.Ranging(CM); //define initial distanceToBall
 
-	while (distanceToBall > 2) //while not near enough
+	while (distance > 2) //while not near enough
 	{
-		distanceToBall = uBottom.Ranging(CM); //keep checking
+		distance = uBottom.Ranging(CM); //keep checking
 	}
 	stopEngines();
 	summonTheClaw();
@@ -363,7 +417,7 @@ void summonTheClaw()
 	delay(1000);
 	openClaw();
 	delay(1000);
-	considerRemainingTime();
+	considerRemainingTime(); // or not
 }
 
 void considerRemainingTime()
@@ -471,4 +525,9 @@ void stopEngines()
 {
 	engL.set(0);
 	engR.set(0);
+}
+
+void halt()
+{
+  while(true){;}
 }
